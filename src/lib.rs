@@ -64,8 +64,10 @@ pub fn display_model() -> Result<(), JsValue> {
     let g = f.clone();
 
     let start_time = (performance.now() / 1000.0) as f32;
+    let mut prev_time = start_time;
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
         let current_time = (performance.now() / 1000.0) as f32;
+        let time_delta = current_time - prev_time;
         let time = current_time - start_time;
 
         context.clear_color(0.0, 0.0, 0.0, 1.0);
@@ -73,7 +75,7 @@ pub fn display_model() -> Result<(), JsValue> {
             WebGl2RenderingContext::COLOR_BUFFER_BIT | WebGl2RenderingContext::DEPTH_BUFFER_BIT,
         );
 
-        run_update(&context, &mut update, &particle_buffers, time);
+        run_update(&context, &mut update, &particle_buffers, time_delta);
 
         let theta = time * (2.0 * std::f32::consts::PI) / 5.0;
         let radius = 1.5;
@@ -106,6 +108,7 @@ pub fn display_model() -> Result<(), JsValue> {
         let stride = (num_components * size_of::<f32>()) as i32;
 
         let i_pos = context.get_attrib_location(&render_program, "i_Position") as u32;
+        context.enable_vertex_attrib_array(i_pos);
         context.vertex_attrib_pointer_with_i32(
             i_pos,
             3,
@@ -114,9 +117,9 @@ pub fn display_model() -> Result<(), JsValue> {
             stride,
             0,
         );
-        context.enable_vertex_attrib_array(i_pos);
 
         let i_age = context.get_attrib_location(&render_program, "i_Age") as u32;
+        context.enable_vertex_attrib_array(i_age);
         context.vertex_attrib_pointer_with_i32(
             i_age,
             1,
@@ -125,9 +128,9 @@ pub fn display_model() -> Result<(), JsValue> {
             stride,
             (3 * size_of::<f32>()) as i32,
         );
-        context.enable_vertex_attrib_array(i_age);
 
         let i_life = context.get_attrib_location(&render_program, "i_Life") as u32;
+        context.enable_vertex_attrib_array(i_life);
         context.vertex_attrib_pointer_with_i32(
             i_life,
             1,
@@ -136,12 +139,12 @@ pub fn display_model() -> Result<(), JsValue> {
             stride,
             (4 * size_of::<f32>()) as i32,
         );
-        context.enable_vertex_attrib_array(i_life);
 
         context.draw_arrays(WebGl2RenderingContext::POINTS, 0, num_particles);
 
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, None);
 
+        prev_time = current_time;
         request_animation_frame(f.borrow().as_ref().unwrap());
     }) as Box<dyn FnMut()>));
 
@@ -322,10 +325,10 @@ fn run_update(
     gl.use_program(Some(&state.program));
 
     gl.uniform1f(Some(&state.u_timedelta), delta);
-    gl.uniform3fv_with_f32_array(Some(&state.u_gravity), &[0.0, 0.0, 0.0]);
+    gl.uniform3fv_with_f32_array(Some(&state.u_gravity), &[0.0, -2.0, 0.0]);
     gl.uniform3fv_with_f32_array(Some(&state.u_origin), &[0.0, 0.0, 0.0]);
-    gl.uniform1f(Some(&state.u_mintheta), std::f32::consts::PI / 2.0 - 0.5);
-    gl.uniform1f(Some(&state.u_maxtheta), std::f32::consts::PI / 2.0 + 0.5);
+    gl.uniform1f(Some(&state.u_mintheta), -std::f32::consts::PI);
+    gl.uniform1f(Some(&state.u_maxtheta), std::f32::consts::PI);
     gl.uniform1f(Some(&state.u_minspeed), 0.5);
     gl.uniform1f(Some(&state.u_maxspeed), 1.0);
 
@@ -455,7 +458,7 @@ pub fn create_buffer(context: &WebGl2RenderingContext) -> Result<WebGlBuffer, St
 
 fn generate_random_rg_data(width: usize, height: usize) -> Vec<u8> {
     let mut data = Vec::new();
-    for _ in 0..width * height {
+    for _ in 0..(width * height) {
         // position
         data.push((js_sys::Math::random() * 255.0) as u8);
         data.push((js_sys::Math::random() * 255.0) as u8);
