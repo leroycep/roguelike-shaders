@@ -11,10 +11,10 @@ uniform sampler2D u_RgNoise;
 
 /* This is the gravity vector. It's a force that affects all particles all the
    time.*/
-uniform vec2 u_Gravity;
+uniform vec3 u_Gravity;
 
 /* This is the point from which all newborn particles start their movement. */
-uniform vec2 u_Origin;
+uniform vec3 u_Origin;
 
 /* Theta is the angle between the vector (1, 0) and a newborn particle's
    velocity vector. By setting u_MinTheta and u_MaxTheta, we can restrict it
@@ -33,7 +33,7 @@ uniform float u_MaxSpeed;
 /* Inputs. These reflect the state of a single particle before the update. */
 
 /* Where the particle is. */
-in vec2 i_Position;
+in vec3 i_Position;
 
 /* Age of the particle in seconds. */
 in float i_Age;
@@ -42,15 +42,15 @@ in float i_Age;
 in float i_Life;
 
 /* Which direction it is moving, and how fast. */ 
-in vec2 i_Velocity;
+in vec3 i_Velocity;
 
 
 /* Outputs. These mirror the inputs. These values will be captured
    into our transform feedback buffer! */
-out vec2 v_Position;
+out vec3 v_Position;
 out float v_Age;
 out float v_Life;
-out vec2 v_Velocity;
+out vec3 v_Velocity;
 
 void main() {
   if (i_Age >= i_Life) {
@@ -75,8 +75,7 @@ void main() {
 
     /* Derive the x and y components of the direction unit vector.
        This is just basic trig. */
-    float x = cos(theta);
-    float y = sin(theta);
+    vec3 direction = vec3(cos(theta), 0.0, sin(theta));
 
     /* Return the particle to origin. */
     v_Position = u_Origin;
@@ -87,9 +86,9 @@ void main() {
 
     /* Generate final velocity vector. We use the second random value here
        to randomize speed. */
-    v_Velocity =
-      vec2(x, y) * (u_MinSpeed + rand.g * (u_MaxSpeed - u_MinSpeed));
+    float speed = (u_MinSpeed + rand.g * (u_MaxSpeed - u_MinSpeed));
 
+    v_Velocity = direction * speed;
   } else {
     /* Update parameters according to our simple rules.*/
     v_Position = i_Position + i_Velocity * u_TimeDelta;
