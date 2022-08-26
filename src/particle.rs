@@ -83,6 +83,7 @@ pub struct Render {
     // uniform locations
     u_projection: WebGlUniformLocation,
     u_view: WebGlUniformLocation,
+    u_gradient: WebGlUniformLocation,
 }
 
 impl UpdateSystem {
@@ -318,6 +319,7 @@ impl Render {
 
             u_projection: get_uniform(gl, &program, "u_Projection")?,
             u_view: get_uniform(gl, &program, "u_View")?,
+            u_gradient: get_uniform(gl, &program, "u_Gradient")?,
 
             program,
         })
@@ -329,8 +331,16 @@ impl Render {
         projection: glam::Mat4,
         view: glam::Mat4,
         emitter: &Emitter,
+        gradient: &WebGlTexture,
     ) {
         gl.use_program(Some(&self.program));
+
+        // Setup blending
+        gl.enable(WebGl2RenderingContext::BLEND);
+        gl.blend_func(
+            WebGl2RenderingContext::SRC_ALPHA,
+            WebGl2RenderingContext::ONE_MINUS_SRC_ALPHA,
+        );
 
         // Bind uniforms
         gl.uniform_matrix4fv_with_f32_array(
@@ -339,6 +349,10 @@ impl Render {
             &projection.to_cols_array(),
         );
         gl.uniform_matrix4fv_with_f32_array(Some(&self.u_view), false, &view.to_cols_array());
+
+        gl.active_texture(WebGl2RenderingContext::TEXTURE0);
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(gradient));
+        gl.uniform1i(Some(&self.u_gradient), 0);
 
         // Bind particle buffer
         gl.bind_buffer(
@@ -387,6 +401,7 @@ impl Render {
 
         // Reset bindings
         gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, None);
+        gl.disable(WebGl2RenderingContext::BLEND);
     }
 }
 

@@ -6,7 +6,8 @@ use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{
-    WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlShader, WebGlUniformLocation,
+    WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlShader, WebGlTexture,
+    WebGlUniformLocation,
 };
 
 mod particle;
@@ -32,9 +33,18 @@ pub fn display_model() -> Result<(), JsValue> {
     let mut fireball = particle_system.create_emitter(
         &context,
         particle::EmitterOptions {
-            gravity: vec3(0.0, -1.0, 0.0),
             ..Default::default()
         },
+    )?;
+    let fireball_gradient = create_gradient_texture(
+        &context,
+        &[
+            glam::f32::Vec4::new(1.0, 1.0, 1.0, 1.0),
+            glam::f32::Vec4::new(1.0, 0.83, 0.0, 0.9),
+            glam::f32::Vec4::new(0.75, 0.25, 0.05, 0.8),
+            glam::f32::Vec4::new(0.18, 0.0, 0.02, 0.5),
+            glam::f32::Vec4::new(0.0, 0.0, 0.0, 0.0),
+        ],
     )?;
 
     let projection =
@@ -71,7 +81,7 @@ pub fn display_model() -> Result<(), JsValue> {
         );
 
         // Render particles
-        particle_renderer.render(&context, projection, view, &fireball);
+        particle_renderer.render(&context, projection, view, &fireball, &fireball_gradient);
 
         prev_time = current_time;
         request_animation_frame(f.borrow().as_ref().unwrap());
@@ -79,6 +89,65 @@ pub fn display_model() -> Result<(), JsValue> {
 
     request_animation_frame(g.borrow().as_ref().unwrap());
     Ok(())
+}
+
+fn create_gradient_texture(
+    gl: &WebGl2RenderingContext,
+    gradient: &[glam::f32::Vec4],
+) -> Result<WebGlTexture, JsValue> {
+    assert!(gradient.len() <= 256);
+
+    let bytes: Vec<_> = gradient
+        .iter()
+        .map(|c| c.to_array())
+        .flatten()
+        .map(|f| (f * 255.0) as u8)
+        .collect();
+
+    log(&format!(
+        "colors len = {}, bytes len = {}",
+        gradient.len(),
+        bytes.len()
+    ));
+
+    let texture = gl
+        .create_texture()
+        .ok_or_else(|| "Failed to create texture")?;
+    gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture));
+
+    gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+        WebGl2RenderingContext::TEXTURE_2D,
+        0,
+        WebGl2RenderingContext::RGBA as i32,
+        gradient.len() as i32,
+        1,
+        0,
+        WebGl2RenderingContext::RGBA,
+        WebGl2RenderingContext::UNSIGNED_BYTE,
+        Some(&bytes),
+    )?;
+    gl.tex_parameteri(
+        WebGl2RenderingContext::TEXTURE_2D,
+        WebGl2RenderingContext::TEXTURE_WRAP_S,
+        WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
+    );
+    gl.tex_parameteri(
+        WebGl2RenderingContext::TEXTURE_2D,
+        WebGl2RenderingContext::TEXTURE_WRAP_T,
+        WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
+    );
+    gl.tex_parameteri(
+        WebGl2RenderingContext::TEXTURE_2D,
+        WebGl2RenderingContext::TEXTURE_MIN_FILTER,
+        WebGl2RenderingContext::LINEAR as i32,
+    );
+    gl.tex_parameteri(
+        WebGl2RenderingContext::TEXTURE_2D,
+        WebGl2RenderingContext::TEXTURE_MAG_FILTER,
+        WebGl2RenderingContext::LINEAR as i32,
+    );
+
+    Ok(texture)
 }
 
 fn window() -> web_sys::Window {

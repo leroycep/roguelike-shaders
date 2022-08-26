@@ -28,8 +28,6 @@ uniform float u_MaxTheta;
 uniform float u_MinSpeed;
 uniform float u_MaxSpeed;
 
-//uniform sampler2D u_ForceField;
-
 /* Inputs. These reflect the state of a single particle before the update. */
 
 /* Where the particle is. */
@@ -78,11 +76,11 @@ void main() {
 
     /* Derive the x and y components of the direction unit vector.
        This is just basic trig. */
-    vec3 direction = vec3(
+    vec3 direction = normalize(vec3(
          cos(theta),
          cos(phi + theta),
          sin(-phi - theta)
-     );
+     ));
 
     /* Return the particle to origin. */
     v_Position = u_Origin;
