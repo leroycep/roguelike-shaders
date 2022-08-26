@@ -1,8 +1,8 @@
 #version 300 es
 precision mediump float;
 
-uniform mat4 view;
-uniform mat4 projection;
+uniform mat4 u_View;
+uniform mat4 u_Projection;
 
 in vec3 i_Position;
 in float i_Age;
@@ -22,5 +22,5 @@ void main() {
   v_Life = i_Life;
   
   gl_PointSize = 1.0 + 6.0 * (1.0 - i_Age/i_Life);  
-  gl_Position = projection * view * vec4(i_Position, 1.0);
+  gl_Position = u_Projection * u_View * vec4(i_Position, 1.0);
 }
