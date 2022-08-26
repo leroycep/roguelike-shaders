@@ -1,5 +1,7 @@
+use glam::vec3;
 use js_sys::Array;
 use std::cell::RefCell;
+use std::default::Default;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -27,7 +29,13 @@ pub fn display_model() -> Result<(), JsValue> {
     let particle_renderer = particle::Render::new(&context)?;
 
     // Create a particle emitter and a renderer
-    let mut fireball = particle_system.create_emitter(&context, 800, 0.3, 0.9)?;
+    let mut fireball = particle_system.create_emitter(
+        &context,
+        particle::EmitterOptions {
+            gravity: vec3(0.0, -1.0, 0.0),
+            ..Default::default()
+        },
+    )?;
 
     let projection =
         glam::f32::Mat4::perspective_infinite_rh(f32::to_radians(45.0), 640.0 / 480.0, 0.01);
@@ -47,8 +55,10 @@ pub fn display_model() -> Result<(), JsValue> {
             WebGl2RenderingContext::COLOR_BUFFER_BIT | WebGl2RenderingContext::DEPTH_BUFFER_BIT,
         );
 
-        // Update Particles
-        particle_system.update(&context, &mut fireball, time_delta);
+        // Update Particles. Skip if the time delta is too large
+        if time_delta < 0.15 {
+            particle_system.update(&context, &mut fireball, time_delta);
+        }
 
         // Calculate camera position
         let theta = time * (2.0 * std::f32::consts::PI) / 5.0;

@@ -1,4 +1,6 @@
 use crate::{compile_shader, create_buffer, get_uniform, link_program};
+use glam::Vec3;
+use std::default::Default;
 use std::mem::size_of;
 use wasm_bindgen::JsValue;
 use web_sys::{
@@ -31,11 +33,43 @@ pub struct UpdateSystem {
 
 #[derive(Debug)]
 pub struct Emitter {
-    num_particles: i32,
+    options: EmitterOptions,
 
     generation: usize,
     buffers: [WebGlBuffer; 2],
     vaos: [WebGlVertexArrayObject; 2],
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct EmitterOptions {
+    // update options
+    pub num_particles: u32,
+
+    // rendering options
+    pub gravity: Vec3,
+    pub origin: Vec3,
+    pub min_age: f32,
+    pub max_age: f32,
+    pub min_theta: f32,
+    pub max_theta: f32,
+    pub min_speed: f32,
+    pub max_speed: f32,
+}
+
+impl Default for EmitterOptions {
+    fn default() -> Self {
+        Self {
+            num_particles: 800,
+            gravity: Vec3::ZERO,
+            origin: Vec3::ZERO,
+            min_age: 0.3,
+            max_age: 0.9,
+            min_theta: -std::f32::consts::PI,
+            max_theta: std::f32::consts::PI,
+            min_speed: 0.5,
+            max_speed: 1.0,
+        }
+    }
 }
 
 pub struct Render {
@@ -130,13 +164,15 @@ impl UpdateSystem {
     pub fn create_emitter(
         self: &Self,
         gl: &WebGl2RenderingContext,
-        num_particles: i32,
-        min_age: f32,
-        max_age: f32,
+        options: EmitterOptions,
     ) -> Result<Emitter, JsValue> {
         let buffers = [create_buffer(gl)?, create_buffer(gl)?];
 
-        let particle_init_data = generate_initial_particle_data(num_particles, min_age, max_age);
+        let particle_init_data = generate_initial_particle_data(
+            options.num_particles as i32,
+            options.min_age,
+            options.max_age,
+        );
         for buffer in &buffers {
             gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
             unsafe {
@@ -211,8 +247,8 @@ impl UpdateSystem {
         gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, None);
 
         Ok(Emitter {
+            options,
             generation: 0,
-            num_particles,
             buffers,
             vaos,
         })
@@ -225,12 +261,12 @@ impl UpdateSystem {
         gl.use_program(Some(&self.program));
 
         gl.uniform1f(Some(&self.u_timedelta), delta);
-        gl.uniform3fv_with_f32_array(Some(&self.u_gravity), &[0.0, -2.0, 0.0]);
-        gl.uniform3fv_with_f32_array(Some(&self.u_origin), &[0.0, 0.0, 0.0]);
-        gl.uniform1f(Some(&self.u_mintheta), -std::f32::consts::PI);
-        gl.uniform1f(Some(&self.u_maxtheta), std::f32::consts::PI);
-        gl.uniform1f(Some(&self.u_minspeed), 0.5);
-        gl.uniform1f(Some(&self.u_maxspeed), 1.0);
+        gl.uniform3fv_with_f32_array(Some(&self.u_origin), &emitter.options.origin.to_array());
+        gl.uniform3fv_with_f32_array(Some(&self.u_gravity), &emitter.options.gravity.to_array());
+        gl.uniform1f(Some(&self.u_mintheta), emitter.options.min_theta);
+        gl.uniform1f(Some(&self.u_maxtheta), emitter.options.max_theta);
+        gl.uniform1f(Some(&self.u_minspeed), emitter.options.min_speed);
+        gl.uniform1f(Some(&self.u_maxspeed), emitter.options.max_speed);
 
         gl.active_texture(WebGl2RenderingContext::TEXTURE0);
         gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&self.rg_noise));
@@ -246,7 +282,11 @@ impl UpdateSystem {
         );
 
         gl.begin_transform_feedback(WebGl2RenderingContext::POINTS);
-        gl.draw_arrays(WebGl2RenderingContext::POINTS, 0, emitter.num_particles);
+        gl.draw_arrays(
+            WebGl2RenderingContext::POINTS,
+            0,
+            emitter.options.num_particles as i32,
+        );
         gl.end_transform_feedback();
 
         gl.disable(WebGl2RenderingContext::RASTERIZER_DISCARD);
@@ -339,7 +379,11 @@ impl Render {
         );
 
         // Draw particles
-        gl.draw_arrays(WebGl2RenderingContext::POINTS, 0, emitter.num_particles);
+        gl.draw_arrays(
+            WebGl2RenderingContext::POINTS,
+            0,
+            emitter.options.num_particles as i32,
+        );
 
         // Reset bindings
         gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, None);
