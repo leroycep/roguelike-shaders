@@ -7,7 +7,7 @@ uniform float u_TimeDelta;
 
 /* A texture with just 2 channels (red and green), filled with random values.
    This is needed to assign a random direction to newly born particles. */
-uniform sampler2D u_RgNoise;
+uniform sampler2D u_RgbNoise;
 
 /* This is the gravity vector. It's a force that affects all particles all the
    time.*/
@@ -66,16 +66,23 @@ void main() {
     ivec2 noise_coord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
     
     /* Get the pair of random values. */
-    vec2 rand = texelFetch(u_RgNoise, noise_coord, 0).rg;
+    vec3 rand = texelFetch(u_RgbNoise, noise_coord, 0).rgb;
 
     /* Decide the direction of the particle based on the first random value.
        The direction is determined by the angle theta that its vector makes
        with the vector (1, 0).*/
     float theta = u_MinTheta + rand.r*(u_MaxTheta - u_MinTheta);
 
+    /* Second "theta" variable, needed for 3d. */
+    float phi = u_MinTheta + rand.g*(u_MaxTheta - u_MinTheta);
+
     /* Derive the x and y components of the direction unit vector.
        This is just basic trig. */
-    vec3 direction = vec3(cos(theta), 0.0, sin(theta));
+    vec3 direction = vec3(
+         cos(theta),
+         cos(phi + theta),
+         sin(-phi - theta)
+     );
 
     /* Return the particle to origin. */
     v_Position = u_Origin;
@@ -86,7 +93,7 @@ void main() {
 
     /* Generate final velocity vector. We use the second random value here
        to randomize speed. */
-    float speed = (u_MinSpeed + rand.g * (u_MaxSpeed - u_MinSpeed));
+    float speed = (u_MinSpeed + rand.b * (u_MaxSpeed - u_MinSpeed));
 
     v_Velocity = direction * speed;
   } else {

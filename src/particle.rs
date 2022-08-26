@@ -111,13 +111,13 @@ impl UpdateSystem {
         gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
             WebGl2RenderingContext::TEXTURE_2D,
             0,
-            WebGl2RenderingContext::RG8 as i32,
+            WebGl2RenderingContext::RGB8 as i32,
             512,
             512,
             0,
-            WebGl2RenderingContext::RG,
+            WebGl2RenderingContext::RGB,
             WebGl2RenderingContext::UNSIGNED_BYTE,
-            Some(&generate_random_rg_data(512, 512)),
+            Some(&generate_random_rgb_data(512, 512)),
         )?;
         gl.tex_parameteri(
             WebGl2RenderingContext::TEXTURE_2D,
@@ -149,7 +149,7 @@ impl UpdateSystem {
             i_velocity: gl.get_attrib_location(&program, "i_Velocity") as u32,
 
             u_timedelta: get_uniform(gl, &program, "u_TimeDelta")?,
-            u_rgnoise: get_uniform(gl, &program, "u_RgNoise")?,
+            u_rgnoise: get_uniform(gl, &program, "u_RgbNoise")?,
             u_gravity: get_uniform(gl, &program, "u_Gravity")?,
             u_origin: get_uniform(gl, &program, "u_Origin")?,
             u_mintheta: get_uniform(gl, &program, "u_MinTheta")?,
@@ -390,10 +390,11 @@ impl Render {
     }
 }
 
-fn generate_random_rg_data(width: usize, height: usize) -> Vec<u8> {
+fn generate_random_rgb_data(width: usize, height: usize) -> Vec<u8> {
     let mut data = Vec::new();
     for _ in 0..(width * height) {
         // position
+        data.push((js_sys::Math::random() * 255.0) as u8);
         data.push((js_sys::Math::random() * 255.0) as u8);
         data.push((js_sys::Math::random() * 255.0) as u8);
     }
