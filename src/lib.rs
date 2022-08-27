@@ -33,6 +33,9 @@ pub fn display_model() -> Result<(), JsValue> {
     let mut fireball = particle_system.create_emitter(
         &context,
         particle::EmitterOptions {
+            gravity: vec3(-7.0, 0.0, 0.0),
+            min_speed: 0.02,
+            max_speed: 0.3,
             ..Default::default()
         },
     )?;
@@ -73,7 +76,7 @@ pub fn display_model() -> Result<(), JsValue> {
         // Calculate camera position
         let theta = time * (2.0 * std::f32::consts::PI) / 5.0;
         let radius = 1.5;
-        let camera_pos = glam::vec3(theta.sin() * radius, 0.5, theta.cos() * radius);
+        let camera_pos = glam::vec3(0.0, 0.5, radius);
         let view = glam::f32::Mat4::look_at_rh(
             camera_pos,
             glam::vec3(0.0, 0.0, 0.0),
